@@ -548,6 +548,7 @@ class Printer implements NodeVisitor {
 
   visitFunctionDeclaration(FunctionDeclaration declaration) {
     indent();
+    outClosureAnnotation(declaration);
     functionOut(declaration.function, declaration.name);
     lineOut();
   }
@@ -586,6 +587,7 @@ class Printer implements NodeVisitor {
   }
 
   visitVariableDeclarationList(VariableDeclarationList list) {
+    outClosureAnnotation(list);
     out(list.keyword);
     out(" ");
     visitCommaSeparated(list.declarations, ASSIGNMENT,
@@ -1053,6 +1055,7 @@ class Printer implements NodeVisitor {
   }
 
   visitMethod(Method node) {
+    outClosureAnnotation(node);
     if (node.isStatic) {
       out('static ');
     }
@@ -1081,6 +1084,15 @@ class Printer implements NodeVisitor {
       blockBody(fun.body, needsSeparation: false, needsNewline: false);
     }
     localNamer.leaveScope();
+  }
+
+  void outClosureAnnotation(Node node) {
+    if (node != null && node.closureAnnotation != null) {
+      String comment = node.closureAnnotation.toString(indentation);
+      if (comment.isNotEmpty) {
+        out(comment);
+      }
+    }
   }
 
   void propertyNameOut(Expression node, {bool inMethod: false,

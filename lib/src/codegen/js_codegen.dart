@@ -23,6 +23,7 @@ import 'package:dev_compiler/src/codegen/reify_coercions.dart'
 import 'package:dev_compiler/src/js/js_ast.dart' as JS;
 import 'package:dev_compiler/src/js/js_ast.dart' show js;
 
+import 'package:dev_compiler/src/closure/closure_codegen.dart' show ClosureCodegen;
 import 'package:dev_compiler/src/compiler.dart' show AbstractCompiler;
 import 'package:dev_compiler/src/checker/rules.dart';
 import 'package:dev_compiler/src/info.dart';
@@ -49,7 +50,7 @@ const DSETINDEX = 'dsetindex';
 const DCALL = 'dcall';
 const DSEND = 'dsend';
 
-class JSCodegenVisitor extends GeneralizingAstVisitor {
+class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureCodegen {
   final AbstractCompiler compiler;
   final CodegenOptions options;
   final TypeRules rules;
@@ -871,7 +872,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
       [body, superCall]
     ];
     var name = _constructorName(node.element.unnamedConstructor);
-    return new JS.Method(name, js.call('function() { #; }', body) as JS.Fun);
+    return annotateDefaultConstructor(
+        new JS.Method(name, js.call('function() { #; }', body) as JS.Fun),
+        node.element);
   }
 
   JS.Method _emitConstructor(ConstructorDeclaration node, InterfaceType type,
@@ -890,7 +893,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
       var params = _visit(node.parameters);
       var fun = js.call('function(#) { return $newKeyword #(#); }',
           [params, _visit(redirect), params,]) as JS.Fun;
-      return new JS.Method(name, fun, isStatic: true)..sourceInformation = node;
+      return annotate(
+          new JS.Method(name, fun, isStatic: true)..sourceInformation = node,
+          node.element);
     }
 
     // Factory constructors are essentially static methods.
@@ -901,7 +906,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
       body.add(_visit(node.body));
       var fun = new JS.Fun(
           _visit(node.parameters) as List<JS.Parameter>, new JS.Block(body));
-      return new JS.Method(name, fun, isStatic: true)..sourceInformation = node;
+      return annotate(
+          new JS.Method(name, fun, isStatic: true)..sourceInformation = node,
+          node.element);
     }
 
     // Code generation for Object's constructor.
@@ -936,9 +943,11 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
     // We generate constructors as initializer methods in the class;
     // this allows use of `super` for instance methods/properties.
     // It also avoids V8 restrictions on `super` in default constructors.
-    return new JS.Method(
-        name, new JS.Fun(_visit(node.parameters) as List<JS.Parameter>, body))
-      ..sourceInformation = node;
+    return annotate(
+        new JS.Method(
+            name, new JS.Fun(_visit(node.parameters) as List<JS.Parameter>, body))
+        ..sourceInformation = node,
+        node.element);
   }
 
   JS.Expression _constructorName(ConstructorElement ctor) {
@@ -1151,6 +1160,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
         // Parameters will be passed using their real names, not the (possibly
         // renamed) local variable.
         var paramName = js.string(param.identifier.name, "'");
+        
+        // TODO(ochafik): Fix `'prop' in obj` to please Closure's renaming
+        // (either test if `obj.prop !== void 0`, or use JSCompiler_renameProperty).
         body.add(js.statement('let # = # && # in # ? #.# : #;', [
           jsParam,
           _namedArgTemp,
@@ -1195,11 +1207,13 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
     var params = _visit(node.parameters) as List<JS.Parameter>;
     if (params == null) params = <JS.Parameter>[];
 
-    return new JS.Method(
-        _elementMemberName(node.element), _emitFunctionBody(params, node.body),
-        isGetter: node.isGetter,
-        isSetter: node.isSetter,
-        isStatic: node.isStatic);
+    return annotate(
+        new JS.Method(
+            _elementMemberName(node.element), _emitFunctionBody(params, node.body),
+            isGetter: node.isGetter,
+            isSetter: node.isSetter,
+            isStatic: node.isStatic),
+        node.element);
   }
 
   @override
@@ -1220,7 +1234,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
     var name = node.name.name;
 
     var id = new JS.Identifier(name);
-    body.add(new JS.FunctionDeclaration(id, _visit(node.functionExpression)));
+    body.add(annotate(
+        new JS.FunctionDeclaration(id, _visit(node.functionExpression)),
+        node.element));
     body.add(_emitFunctionTagged(id, node.element.type, topLevel: true)
         .toStatement());
 
@@ -1230,8 +1246,10 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
 
   JS.Method _emitTopLevelProperty(FunctionDeclaration node) {
     var name = node.name.name;
-    return new JS.Method(_propertyName(name), _visit(node.functionExpression),
-        isGetter: node.isGetter, isSetter: node.isSetter);
+    return annotate(
+        new JS.Method(_propertyName(name), _visit(node.functionExpression),
+            isGetter: node.isGetter, isSetter: node.isSetter),
+        node.element);
   }
 
   bool _executesAtTopLevel(AstNode node) {
@@ -1395,6 +1413,7 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
     } else {
       declareFn = new JS.FunctionDeclaration(name, fn);
     }
+    declareFn = annotate(declareFn, node.functionDeclaration.element);
 
     return new JS.Block([
       declareFn,
@@ -1969,16 +1988,20 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
       var name = node.name.name;
       var element = node.element;
       var access = _emitMemberName(name, type: element.type, isStatic: true);
-      methods.add(new JS.Method(
-          access,
-          js.call('function() { return #; }', _visit(node.initializer))
-          as JS.Fun,
-          isGetter: true));
+      methods.add(annotate(
+          new JS.Method(
+              access,
+              js.call('function() { return #; }', _visit(node.initializer))
+              as JS.Fun,
+              isGetter: true),
+          _findAccessor(element, getter: true)));
 
       // TODO(jmesserly): use a dummy setter to indicate writable.
       if (!node.isFinal) {
-        methods.add(new JS.Method(access, js.call('function(_) {}') as JS.Fun,
-            isSetter: true));
+        methods.add(annotate(
+            new JS.Method(access, js.call('function(_) {}') as JS.Fun,
+                isSetter: true),
+            _findAccessor(element, getter: false)));
       }
     }
 
@@ -1990,6 +2013,14 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
 
     return js.statement(
         'dart.defineLazyProperties(#, { # });', [objExpr, methods]);
+  }
+
+  PropertyAccessorElement _findAccessor(VariableElement element, {bool getter}) {
+    var parent = element.enclosingElement; 
+    if (parent is ClassElement) {
+      return getter ? parent.getGetter(element.name) : parent.getSetter(element.name);
+    }
+    return null;
   }
 
   void _flushLibraryProperties(List<JS.Statement> body) {
@@ -3010,6 +3041,22 @@ class JSCodegenVisitor extends GeneralizingAstVisitor {
   }
 
   DartType getStaticType(Expression e) => rules.getStaticType(e);
+
+  @override
+  String getQualifiedName(ClassElement type) {
+    JS.TemporaryId id = _imports[type.library];
+    return id == null ? type.name : '${id.name}.${type.name}';
+  }
+
+  JS.Node annotate(JS.Node method, ExecutableElement e) =>
+      options.closure && e != null
+          ? method.withClosureAnnotation(closureAnnotationFor(e, _namedArgTemp.name))
+          : method;
+
+  JS.Node annotateDefaultConstructor(JS.Node method, ClassElement e) =>
+      options.closure && e != null
+          ? method.withClosureAnnotation(closureAnnotationForDefaultConstructor(e))
+          : method;
 }
 
 class JSGenerator extends CodeGenerator {
