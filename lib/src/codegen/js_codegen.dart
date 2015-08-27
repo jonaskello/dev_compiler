@@ -3262,6 +3262,7 @@ class JSGenerator extends CodeGenerator {
     var module = codegen.emitLibrary(unit);
     var out = compiler.getOutputPath(library.source.uri);
     return writeJsLibrary(module, out,
+        closure: options.closure,
         emitSourceMaps: options.emitSourceMaps,
         arrowFnBindThisWorkaround: options.arrowFnBindThisWorkaround);
   }

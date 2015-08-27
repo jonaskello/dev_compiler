@@ -9,6 +9,7 @@ class JavaScriptPrintingOptions {
   final bool shouldCompressOutput;
   final bool minifyLocalVariables;
   final bool preferSemicolonToNewlineInMinifiedOutput;
+  final bool closure;
 
   /// True to allow keywords in properties, such as `obj.var` or `obj.function`
   /// Modern JS engines support this.
@@ -22,6 +23,7 @@ class JavaScriptPrintingOptions {
        this.minifyLocalVariables: false,
        this.preferSemicolonToNewlineInMinifiedOutput: false,
        this.allowKeywordsInProperties: false,
+       this.closure: false,
        this.arrowFnBindThisWorkaround: false});
 }
 
@@ -737,9 +739,13 @@ class Printer implements NodeVisitor {
         context.error("Forgot operator: $op");
     }
 
-    visitNestedExpression(left, leftPrecedenceRequirement,
-                          newInForInit: inForInit,
-                          newAtStatementBegin: atStatementBegin);
+    if (op == "in" && left is LiteralString) {
+      outRenamableProperty(left.value);
+    } else {
+      visitNestedExpression(left, leftPrecedenceRequirement,
+                            newInForInit: inForInit,
+                            newAtStatementBegin: atStatementBegin);
+    }
 
     if (op == "in" || op == "instanceof") {
       // There are cases where the space is not required but without further
@@ -1098,6 +1104,16 @@ class Printer implements NodeVisitor {
       }
     }
   }
+  
+  outRenamableProperty(String name) {
+    if (options.closure) {
+      out('JSCompiler_renameProperty(');
+      out(name);
+      out(')');
+    } else {
+      out(name);
+    }
+  }
 
   void propertyNameOut(Expression node, {bool inMethod: false,
       bool inAccess: false}) {
@@ -1114,7 +1130,7 @@ class Printer implements NodeVisitor {
           out(node.valueWithoutQuotes);
         } else {
           if (inMethod || inAccess) out("[");
-          out(node.value);
+          outRenamableProperty(node.value);
           if (inMethod || inAccess) out("]");
         }
       } else {
