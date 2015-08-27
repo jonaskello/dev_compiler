@@ -16,6 +16,7 @@ import 'package:yaml/yaml.dart';
 import 'package:dev_compiler/strong_mode.dart' show StrongModeOptions;
 
 const bool _CLOSURE_DEFAULT = false;
+const bool _CLOSURE_MODULES_DEFAULT = false;
 
 /// Options used to set up Source URI resolution in the analysis context.
 class SourceResolverOptions {
@@ -61,6 +62,9 @@ class CodegenOptions {
   /// Whether to emit the source map files.
   final bool emitSourceMaps;
 
+  /// Emit modules that use Closure's goog.module.
+  final bool closureModules;
+
   /// Whether to force compilation of code with static errors.
   final bool forceCompile;
 
@@ -76,6 +80,7 @@ class CodegenOptions {
 
   const CodegenOptions(
       {this.emitSourceMaps: true,
+      this.closureModules: _CLOSURE_MODULES_DEFAULT,
       this.forceCompile: false,
       this.closure: _CLOSURE_DEFAULT,
       this.outputDir,
@@ -218,6 +223,7 @@ CompilerOptions parseOptions(List<String> argv, {bool forceOutDir: false}) {
   return new CompilerOptions(
       codegenOptions: new CodegenOptions(
           emitSourceMaps: args['source-maps'],
+          closureModules: args['closure-modules'],
           forceCompile: args['force-compile'] || serverMode,
           closure: args['closure'],
           outputDir: outputDir,
@@ -304,6 +310,8 @@ final ArgParser argParser = StrongModeOptions.addArguments(new ArgParser()
   ..addFlag('closure',
       help: 'Emit Closure Compiler-friendly code (experimental)',
       defaultsTo: _CLOSURE_DEFAULT)
+  ..addFlag('closure-modules',
+      help: 'Generate modules in the Closure goog.module', defaultsTo: _CLOSURE_MODULES_DEFAULT)
   ..addFlag('force-compile',
       help: 'Compile code with static errors', defaultsTo: false)
   ..addOption('log', abbr: 'l', help: 'Logging level (defaults to severe)')

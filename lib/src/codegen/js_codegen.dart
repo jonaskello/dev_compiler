@@ -186,51 +186,102 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
 
     var jsPath = compiler.getModuleName(currentLibrary.source.uri);
 
-    // TODO(jmesserly): it would be great to run the renamer on the body,
-    // then figure out if we really need each of these parameters.
-    // See ES6 modules: https://github.com/dart-lang/dev_compiler/issues/34
-    var params = [_exportsVar, _runtimeLibVar];
-    var processImport =
-        (LibraryElement library, JS.TemporaryId temp, List list) {
-      params.add(temp);
-      list.add(js.string(compiler.getModuleName(library.source.uri), "'"));
-    };
-
-    var imports = <JS.Expression>[js.string('dart_runtime/dart')];
-    _imports.forEach((library, temp) {
-      if (_loader.libraryIsLoaded(library)) {
-        processImport(library, temp, imports);
-      }
-    });
-
-    var lazyImports = <JS.Expression>[];
-    _imports.forEach((library, temp) {
-      if (!_loader.libraryIsLoaded(library)) {
-        processImport(library, temp, lazyImports);
-      }
-    });
+    var fileStatements = <JS.Statement>[];
 
     var dartxImport =
         js.statement("let # = #.dartx;", [_dartxVar, _runtimeLibVar]);
-
-    var module = js.call("function(#) { 'use strict'; #; #; }",
-        [params, dartxImport, _moduleItems]);
-
-    var moduleDef = js.statement("dart_library.library(#, #, #, #, #)", [
-      js.string(jsPath, "'"),
-      _jsModuleValue ?? new JS.LiteralNull(),
-      js.commentExpression(
-          "Imports", new JS.ArrayInitializer(imports, multiline: true)),
-      js.commentExpression("Lazy imports",
-          new JS.ArrayInitializer(lazyImports, multiline: true)),
-      module
-    ]);
+    _moduleItems.insert(0, dartxImport);
+  
+    if (options.closureModules) {
+      var importStatements = <JS.Statement>[];
+      var lazyImportStatements = <JS.Statement>[];
+      
+      String formatModuleName(String name) => name.replaceAll('/', '.');
+      
+      /// TODO(ochafik): Account for [_exportsVar].
+      addImport(JS.Identifier alias, String moduleName, List list) {
+        importStatements.add(
+            js.statement("let # = goog.require(#);", [
+              alias,
+              js.string(formatModuleName(moduleName), "'")
+            ]));
+      }
+      processImport(LibraryElement library, JS.TemporaryId temp, List list) {
+        addImport(temp, compiler.getModuleName(library.source.uri), list);
+      };
+  
+      addImport(_runtimeLibVar, 'dart_runtime/dart', importStatements);
+      _imports.forEach((library, temp) {
+        if (_loader.libraryIsLoaded(library)) {
+          processImport(library, temp, importStatements);
+        }
+      });
+  
+      _imports.forEach((library, temp) {
+        if (!_loader.libraryIsLoaded(library)) {
+          processImport(library, temp, lazyImportStatements);
+        }
+      });
+  
+      var moduleName = formatModuleName(jsPath);
+      // TODO(ochafik): What about [_jsModuleValue]?
+      fileStatements
+          ..add(js.statement("'use strict'"))
+          ..add(js.statement("goog.module(#)", [js.string(moduleName, "'")]))
+          ..add(js.comment('Imports'))
+          ..addAll(importStatements);
+      if (lazyImportStatements.isNotEmpty) {
+        fileStatements
+            ..add(js.comment('Lazy Imports (TODO(ochafik): Make them work)'))
+            ..addAll(lazyImportStatements);
+      }
+      fileStatements
+          ..add(js.comment('Module $moduleName'))
+          ..addAll(_moduleItems);
+    } else {
+      // TODO(jmesserly): it would be great to run the renamer on the body,
+      // then figure out if we really need each of these parameters.
+      // See ES6 modules: https://github.com/dart-lang/dev_compiler/issues/34
+      var params = [_exportsVar, _runtimeLibVar];
+      var processImport =
+          (LibraryElement library, JS.TemporaryId temp, List list) {
+        params.add(temp);
+        list.add(js.string(compiler.getModuleName(library.source.uri), "'"));
+      };
+  
+      var imports = <JS.Expression>[js.string('dart_runtime/dart')];
+      _imports.forEach((library, temp) {
+        if (_loader.libraryIsLoaded(library)) {
+          processImport(library, temp, imports);
+        }
+      });
+  
+      var lazyImports = <JS.Expression>[];
+      _imports.forEach((library, temp) {
+        if (!_loader.libraryIsLoaded(library)) {
+          processImport(library, temp, lazyImports);
+        }
+      });
+  
+      var module = js.call("function(#) { 'use strict'; #; }",
+          [params, _moduleItems]);
+  
+      fileStatements.add(js.statement("dart_library.library(#, #, #, #, #)", [
+        js.string(jsPath, "'"),
+        _jsModuleValue ?? new JS.LiteralNull(),
+        js.commentExpression(
+            "Imports", new JS.ArrayInitializer(imports, multiline: true)),
+        js.commentExpression("Lazy imports",
+            new JS.ArrayInitializer(lazyImports, multiline: true)),
+        module
+      ]));
+    }
 
     var jsBin = compiler.options.runnerOptions.v8Binary;
 
     String scriptTag = null;
     if (library.library.scriptTag != null) scriptTag = '/usr/bin/env $jsBin';
-    return new JS.Program(<JS.Statement>[moduleDef], scriptTag: scriptTag);
+    return new JS.Program(fileStatements, scriptTag: scriptTag);
   }
 
   void _emitModuleItem(AstNode node) {

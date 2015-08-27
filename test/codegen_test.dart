@@ -58,13 +58,15 @@ main(arguments) {
   var expectDir = path.join(inputDir, 'expect');
 
   bool compile(String entryPoint, AnalysisContext context,
-      {bool checkSdk: false, bool sourceMaps: false, bool closure: false}) {
+      {bool checkSdk: false, bool closureModules: false, bool sourceMaps: false,
+       bool closure: false}) {
     // TODO(jmesserly): add a way to specify flags in the test file, so
     // they're more self-contained.
     var runtimeDir = path.join(path.dirname(testDirectory), 'lib', 'runtime');
     var options = new CompilerOptions(
         codegenOptions: new CodegenOptions(
             outputDir: expectDir,
+            closureModules: closureModules,
             emitSourceMaps: sourceMaps,
             closure: closure,
             forceCompile: checkSdk),
@@ -133,10 +135,14 @@ main(arguments) {
           // TODO(jmesserly): this was added to get some coverage of source maps
           // and closure annotations.
           // We need a more comprehensive strategy to test them.
-          var sourceMaps = filename == 'map_keys';
           var closure = filename == 'closure';
-          var success = compile(filePath, realSdkContext,
-              sourceMaps: sourceMaps, closure: closure);
+          var closureModules = filename == 'closure_modules';
+          var sourceMaps = filename == 'map_keys';
+          var success =
+              compile(filePath, realSdkContext,
+                  closure: closure,
+                  closureModules: closureModules,
+                  sourceMaps: sourceMaps);
 
           // Write compiler messages to disk.
           new File(path.join(outDir, '$filename.txt'))
