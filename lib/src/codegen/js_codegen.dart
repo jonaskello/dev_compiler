@@ -402,10 +402,25 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
       }
     }
 
-    var classDecl = new JS.ClassDeclaration(new JS.ClassExpression(
+    var classDecl = _classDeclaration(new JS.ClassExpression(
         new JS.Identifier(element.name), _classHeritage(element), body));
 
     return _finishClassDef(element.type, classDecl);
+  }
+
+  /// Whether class parent needs to be a qualified identifier
+  /// (as opposed to an expression such as `dart.mixin(...)`).
+  bool get _needsQualifiedHeritage => options.closure;
+
+  JS.Node _classDeclaration(JS.ClassExpression cls) {
+    var body = [];
+    if (_needsQualifiedHeritage && '${cls.heritage}'.contains('(')) {
+      var heritageAlias = new JS.Identifier("${cls.name.name}\$super");
+      body.add(js.statement('let # = #', [heritageAlias, cls.heritage]));
+      cls = new JS.ClassExpression(cls.name, heritageAlias, cls.methods);
+    }
+    body.add(new JS.ClassDeclaration(cls));
+    return body.length == 1 ? body.single : _statement(body);
   }
 
   JS.Statement _emitJsType(String dartClassName, DartObjectImpl jsName) {
@@ -697,7 +712,7 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
       }
     }
 
-    body.add(new JS.ClassDeclaration(cls));
+    body.add(_classDeclaration(cls));
 
     // TODO(jmesserly): we should really just extend native Array.
     if (jsPeerName != null && classElem.typeParameters.isNotEmpty) {
