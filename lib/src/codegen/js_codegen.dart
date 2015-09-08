@@ -38,6 +38,7 @@ import 'js_metalet.dart' as JS;
 import 'js_module_item_order.dart';
 import 'js_printer.dart' show writeJsLibrary;
 import 'side_effect_analysis.dart';
+import 'js_passthrough_codegen.dart';
 
 // Various dynamic helpers we call.
 // If renaming these, make sure to check other places like the
@@ -51,7 +52,9 @@ const DSETINDEX = 'dsetindex';
 const DCALL = 'dcall';
 const DSEND = 'dsend';
 
-class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
+class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator,
+    JsPassThroughCodegen {
+
   final AbstractCompiler compiler;
   final CodegenOptions options;
   final TypeRules rules;
@@ -106,6 +109,8 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
 
   Map<String, DartType> _objectMembers;
 
+  bool _passThroughJs = false;
+
   JSCodegenVisitor(AbstractCompiler compiler, this.currentLibrary,
       this._extensionTypes, this._fieldsNeedingStorage)
       : compiler = compiler,
@@ -119,6 +124,7 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
     _jsArray = interceptors.getType('JSArray');
 
     _objectMembers = getObjectMemberMap(types);
+    _passThroughJs = isLibraryConfiguredForPassThroughJsInterop(currentLibrary);
   }
 
   TypeProvider get types => rules.provider;
@@ -312,7 +318,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
     var to = node.type.type;
 
     // Skip the cast if it's not needed.
-    if (rules.isSubTypeOf(from, to)) return _visit(node.expression);
+    if (rules.isSubTypeOf(from, to) || isPassThroughJsObject(node)) {
+      return _visit(node.expression);
+    }
 
     // All Dart number types map to a JS double.
     if (rules.isNumType(from) &&
@@ -1665,6 +1673,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
   @override
   JS.Expression visitAssignmentExpression(AssignmentExpression node) {
     var left = node.leftHandSide;
+    if (left is IndexExpression && isPassThroughJsObject(left.target)) {
+      return emitPassThroughJsIndexedAssignment(node, _visit);
+    }
     var right = node.rightHandSide;
     if (node.operator.type == TokenType.EQ) return _emitSet(left, right);
     var op = node.operator.lexeme;
@@ -1776,6 +1787,15 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
   JS.Block visitBlock(Block node) =>
       new JS.Block(_visitList(node.statements) as List<JS.Statement>);
 
+  bool isPassThroughJsObject(Expression expr) {
+    var res = _passThroughJs && options.enablePassThroughJsInterop &&
+        isJsObject(expr);
+    // Assume `context['Foo']` to be a JsObject.
+    // This allows for simpler pass-through interop code
+    // (otherwise need many casts such as `context['Foo'] as JsObject`).
+    return res || (expr is IndexExpression && isJsContext(expr.target));
+  }
+
   @override
   visitMethodInvocation(MethodInvocation node) {
     if (node.operator != null && node.operator.lexeme == '?.') {
@@ -1783,6 +1803,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
     }
 
     var target = _getTarget(node);
+    if (isPassThroughJsObject(target)) {
+      return emitPassThroughJsMethodInvocation(node, _visit);
+    }
     var result = _emitForeignJS(node);
     if (result != null) return result;
 
@@ -2150,6 +2173,10 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
 
   @override
   visitInstanceCreationExpression(InstanceCreationExpression node) {
+    if (isPassThroughJsObject(node)) {
+      return emitPassThroughJsInstanceCreation(node, _visit);
+    }
+
     var element = node.staticElement;
     var constructor = node.constructorName;
     var name = constructor.name;
@@ -2685,6 +2712,9 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
   @override
   visitIndexExpression(IndexExpression node) {
     var target = _getTarget(node);
+    if (isPassThroughJsObject(target)) {
+      return emitPassThroughJsIndexExpression(node, _visit);
+    }
     if (_useNativeJsIndexer(target.staticType)) {
       return new JS.PropertyAccess(_visit(target), _visit(node.index));
     }

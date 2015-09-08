@@ -1,0 +1,11 @@
+// Messages from compiling js_passthrough.dart
+severe: [AnalyzerMessage] Native functions can only be declared in the SDK and code that is loaded through native extensions (test/codegen/js_passthrough.dart, line 6, col 27)
+info: [DynamicCast] context['ConstructorWithoutArgs'] (dynamic) will need runtime check to cast to type JsFunction (test/codegen/js_passthrough.dart, line 19, col 24)
+info: [DynamicCast] context['ConstructorWithArgs'] (dynamic) will need runtime check to cast to type JsFunction (test/codegen/js_passthrough.dart, line 20, col 20)
+info: [DynamicCast] context['ConstructorWithArgList'] (dynamic) will need runtime check to cast to type JsFunction (test/codegen/js_passthrough.dart, line 21, col 20)
+info: [DynamicCast] args (dynamic) will need runtime check to cast to type List<dynamic> (test/codegen/js_passthrough.dart, line 21, col 55)
+info: [DynamicCast] args (dynamic) will need runtime check to cast to type List<dynamic> (test/codegen/js_passthrough.dart, line 24, col 43)
+info: [DynamicCast] context['Bar'] (dynamic) will need runtime check to cast to type JsFunction (test/codegen/js_passthrough.dart, line 27, col 22)
+info: [DynamicCast] args (dynamic) will need runtime check to cast to type List<dynamic> (test/codegen/js_passthrough.dart, line 33, col 17)
+info: [DynamicCast] args (dynamic) will need runtime check to cast to type List<dynamic> (test/codegen/js_passthrough.dart, line 34, col 17)
+info: [DynamicInvoke] context['Symbol'].apply(['_runtimeType']) requires dynamic invoke (test/codegen/js_passthrough.dart, line 36, col 9)

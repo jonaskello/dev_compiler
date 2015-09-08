@@ -74,11 +74,14 @@ class CodegenOptions {
   /// other V8 builds
   final bool arrowFnBindThisWorkaround;
 
+  final bool enablePassThroughJsInterop;
+
   const CodegenOptions(
       {this.emitSourceMaps: true,
       this.forceCompile: false,
       this.closure: _CLOSURE_DEFAULT,
       this.outputDir,
+      this.enablePassThroughJsInterop: false,
       this.arrowFnBindThisWorkaround: false});
 }
 
@@ -221,6 +224,7 @@ CompilerOptions parseOptions(List<String> argv, {bool forceOutDir: false}) {
           forceCompile: args['force-compile'] || serverMode,
           closure: args['closure'],
           outputDir: outputDir,
+          enablePassThroughJsInterop: args['enable-pass-through-js-interop'],
           arrowFnBindThisWorkaround: args['arrow-fn-bind-this']),
       sourceOptions: new SourceResolverOptions(
           useMockSdk: args['mock-sdk'],
@@ -285,6 +289,8 @@ final ArgParser argParser = StrongModeOptions.addArguments(new ArgParser()
       help: 'Where to find dev_compiler\'s runtime files', defaultsTo: null)
   ..addFlag('arrow-fn-bind-this',
       help: 'Work around `this` binding in => functions')
+  ..addFlag('enable-pass-through-js-interop',
+      help: 'Enable pass-through JavaScript interop to compile JS runtime.')
 
   // general options
   ..addFlag('help', abbr: 'h', help: 'Display this message')

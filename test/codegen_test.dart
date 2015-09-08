@@ -58,23 +58,30 @@ main(arguments) {
   var expectDir = path.join(inputDir, 'expect');
 
   bool compile(String entryPoint, AnalysisContext context,
-      {bool checkSdk: false, bool sourceMaps: false, bool closure: false}) {
+      {bool checkSdk: false, bool sourceMaps: false,
+        bool enablePassThroughJsInterop: false,
+        bool closure: false}) {
     // TODO(jmesserly): add a way to specify flags in the test file, so
     // they're more self-contained.
     var runtimeDir = path.join(path.dirname(testDirectory), 'lib', 'runtime');
     var options = new CompilerOptions(
         codegenOptions: new CodegenOptions(
             outputDir: expectDir,
+            enablePassThroughJsInterop: enablePassThroughJsInterop,
             emitSourceMaps: sourceMaps,
             closure: closure,
-            forceCompile: checkSdk),
+            forceCompile: checkSdk || enablePassThroughJsInterop),
         useColors: false,
         checkSdk: checkSdk,
         runtimeDir: runtimeDir,
         inputs: [entryPoint],
         inputBaseDir: inputDir);
     var reporter = createErrorReporter(context, options);
-    return new BatchCompiler(context, options, reporter: reporter).run();
+    // TODO(ochafik): Make the analyzer to accept `native` declarations outside
+    // the SDK (needed for native VM extensions anyway).
+    var ignoreErrors = enablePassThroughJsInterop;
+    return new BatchCompiler(context, options, reporter: reporter).run()
+        || ignoreErrors;
   }
 
   {
@@ -135,7 +142,9 @@ main(arguments) {
           // We need a more comprehensive strategy to test them.
           var sourceMaps = filename == 'map_keys';
           var closure = filename == 'closure';
+          var enablePassThroughJsInterop = filename == 'js_passthrough';
           var success = compile(filePath, realSdkContext,
+              enablePassThroughJsInterop: enablePassThroughJsInterop,
               sourceMaps: sourceMaps, closure: closure);
 
           // Write compiler messages to disk.
