@@ -6,3 +6,5 @@ $DIR/test.sh
 $DIR/browser_test.sh
 $DIR/analyze.sh
 $DIR/format.sh
+$DIR/check_runner.sh
+$DIR/coverage.sh
