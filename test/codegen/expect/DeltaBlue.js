@@ -316,11 +316,11 @@ dart_library.library('DeltaBlue', null, /* Imports */[
   class Variable extends core.Object {
     Variable(name, value) {
       this.constraints = dart.list([], Constraint);
-      this.walkStrength = dart.as(WEAKEST, Strength);
       this.name = name;
       this.value = value;
       this.determinedBy = null;
       this.mark = 0;
+      this.walkStrength = WEAKEST;
       this.stay = true;
     }
     addConstraint(c) {

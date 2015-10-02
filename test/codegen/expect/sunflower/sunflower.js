@@ -45,7 +45,7 @@ dart_library.library('sunflower/sunflower', null, /* Imports */[
     exports.seeds = core.int.parse(exports.slider.value);
     exports.context.clearRect(0, 0, MAX_D, MAX_D);
     for (let i = 0; dart.notNull(i) < dart.notNull(exports.seeds); i = dart.notNull(i) + 1) {
-      let theta = dart.notNull(i) * dart.notNull(painter.TAU) / dart.notNull(exports.PHI);
+      let theta = dart.notNull(i) * dart.notNull(dart.as(painter.TAU, core.num)) / dart.notNull(exports.PHI);
       let r = dart.notNull(math.sqrt(i)) * dart.notNull(SCALE_FACTOR);
       let x = dart.notNull(centerX) + dart.notNull(r) * dart.notNull(math.cos(theta));
       let y = dart.notNull(centerY) - dart.notNull(r) * dart.notNull(math.sin(theta));

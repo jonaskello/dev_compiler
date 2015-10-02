@@ -3,4 +3,3 @@ info: [DynamicCast] mark (dynamic) will need runtime check to cast to type int (
 info: [DynamicCast] mark (dynamic) will need runtime check to cast to type int (test/codegen/DeltaBlue.dart, line 137, col 16)
 info: [DynamicCast] mark (dynamic) will need runtime check to cast to type int (test/codegen/DeltaBlue.dart, line 142, col 37)
 info: [DynamicCast] mark (dynamic) will need runtime check to cast to type int (test/codegen/DeltaBlue.dart, line 143, col 16)
-info: [DynamicCast] WEAKEST (dynamic) will need runtime check to cast to type Strength (test/codegen/DeltaBlue.dart, line 417, col 27)
