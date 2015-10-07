@@ -226,35 +226,6 @@ void main() {
       inferTransitively: true);
 
   testChecker(
-      'do not infer from static and instance fields when flag is off',
-      {
-        '/a.dart': '''
-          import 'b.dart';
-          class A {
-            static final a1 = B.b1;
-            final a2 = new B().b2;
-          }
-      ''',
-        '/b.dart': '''
-          class B {
-            static final b1 = 1;
-            final b2 = 1;
-          }
-      ''',
-        '/main.dart': '''
-          import "a.dart";
-
-          test1() {
-            int x = 0;
-            // inference in A disabled (flag is off)
-            x = /*info:DynamicCast*/A.a1;
-            x = /*info:DynamicCast*/new A().a2;
-          }
-    '''
-      },
-      inferTransitively: false);
-
-  testChecker(
       'can infer also from static and instance fields (flag on)',
       {
         '/a.dart': '''
@@ -417,38 +388,6 @@ void main() {
         }
     '''
   });
-
-  testChecker(
-      'do not infer if complex expressions read possibly inferred field',
-      {
-        '/a.dart': '''
-        class A {
-          var x = 3;
-        }
-      ''',
-        '/main.dart': '''
-        import 'a.dart';
-        class B {
-          var y = 3;
-        }
-        final t1 = new A();
-        final t2 = new A().x;
-        final t3 = new B();
-        final t4 = new B().y;
-
-        test1() {
-          int i = 0;
-          A a;
-          B b;
-          a = t1;
-          i = /*info:DynamicCast*/t2;
-          b = t3;
-          i = /*info:DynamicCast*/t4;
-          i = new B().y; // B.y was inferred though
-        }
-    '''
-      },
-      inferTransitively: false);
 
   // but flags can enable this behavior.
   testChecker(

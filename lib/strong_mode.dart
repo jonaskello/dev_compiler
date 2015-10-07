@@ -35,6 +35,8 @@ class StrongChecker {
 
   factory StrongChecker(
       AnalysisContext context, StrongModeOptions options) {
+    // TODO(vsm): Remove this once analyzer_cli is completely switched to the
+    // task model.
     if (!AnalysisEngine.instance.useTaskModel) enableDevCompilerInference(context, options);
     var rules = new RestrictedRules(context.typeProvider, options: options);
     var reporter = new _ErrorCollector(options.hints);

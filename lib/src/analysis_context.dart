@@ -32,7 +32,6 @@ AnalysisContext createAnalysisContextWithSources(
 AnalysisContext createAnalysisContext(StrongModeOptions options) {
   var res = AnalysisEngine.instance.createAnalysisContext();
   res.analysisOptions.strongMode = true;
-  if (!AnalysisEngine.instance.useTaskModel) enableDevCompilerInference(res, options);
   return res;
 }
 
