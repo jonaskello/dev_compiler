@@ -7,7 +7,8 @@
 /// definitions to provide mock sdks.
 library dev_compiler.src.dart_sdk;
 
-import 'package:analyzer/src/generated/engine.dart' show AnalysisContext, TimestampedData;
+import 'package:analyzer/src/generated/engine.dart'
+    show AnalysisContext, TimestampedData;
 import 'package:analyzer/src/generated/sdk.dart';
 import 'package:analyzer/src/generated/source.dart';
 import 'package:analyzer/src/context/context.dart';
