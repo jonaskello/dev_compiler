@@ -82,6 +82,9 @@ abstract class NodeVisitor<T> {
   T visitInterpolatedStatement(InterpolatedStatement node);
   T visitInterpolatedMethod(InterpolatedMethod node);
   T visitInterpolatedIdentifier(InterpolatedIdentifier node);
+
+  T visitTypeRef(TypeRef node);
+  T visitPlaceholderExpression(PlaceholderExpression node);
 }
 
 class BaseVisitor<T> implements NodeVisitor<T> {
@@ -197,9 +200,18 @@ class BaseVisitor<T> implements NodeVisitor<T> {
 
   T visitAwait(Await node) => visitExpression(node);
   T visitDartYield(DartYield node) => visitStatement(node);
+
+  T visitTypeRef(TypeRef node) => null;
+  T visitPlaceholderExpression(PlaceholderExpression node) =>
+      node.data.accept(this);
 }
 
-abstract class Node {
+abstract class Visitable {
+  accept(NodeVisitor visitor);
+  void visitChildren(NodeVisitor visitor);
+}
+
+abstract class Node extends Visitable {
   /// Sets the source location of this node. For performance reasons, we allow
   /// setting this after construction.
   Object sourceInformation;
@@ -208,16 +220,13 @@ abstract class Node {
   /// Closure annotation of this node.
   ClosureAnnotation get closureAnnotation => _closureAnnotation;
 
-  accept(NodeVisitor visitor);
-  void visitChildren(NodeVisitor visitor);
-
   // Shallow clone of node.  Does not clone positions since the only use of this
   // private method is create a copy with a new position.
   Node _clone();
 
   withClosureAnnotation(ClosureAnnotation closureAnnotation) {
     if (this.closureAnnotation == closureAnnotation) return this;
-    
+
     return _clone()
         ..sourceInformation = sourceInformation
         .._closureAnnotation = closureAnnotation;
@@ -664,6 +673,28 @@ abstract class Expression extends Node {
           [new VariableInitialization(name, this)]).toStatement();
 }
 
+/// Mutable placeholder expression that provides an entry point for simple
+/// AST transforms / expansions.
+///
+/// The data might not be JS [Node] but may contain JS nodes and be visitable.
+class PlaceholderExpression extends Expression {
+  Visitable data;
+  PlaceholderExpression(this.data);
+
+  int get precedenceLevel =>
+      data is Expression ? (data as Expression).precedenceLevel : EXPRESSION;
+
+  @override
+  accept(NodeVisitor visitor) => visitor.visitPlaceholderExpression(this);
+
+  @override
+  void visitChildren(NodeVisitor visitor) {}
+
+  @override
+  Node _clone() =>
+      new PlaceholderExpression(data is Node ? (data as Node)._clone() : data);
+}
+
 class LiteralExpression extends Expression {
   final String template;
   final List<Expression> inputs;
@@ -1027,21 +1058,31 @@ class NamedFunction extends Expression {
   int get precedenceLevel => PRIMARY_LOW_PRECEDENCE;
 }
 
+abstract class JsType {}
+
 abstract class FunctionExpression extends Expression {
   List<Parameter> get params;
+  List<JsType> get paramTypes;
+
   get body; // Expression or block
+  JsType get returnType; // Type of the body or of its return type.
 }
 
 class Fun extends FunctionExpression {
   final List<Parameter> params;
+  final List<JsType> paramTypes;
   final Block body;
+  final JsType returnType;
   /** Whether this is a JS generator (`function*`) that may contain `yield`. */
   final bool isGenerator;
 
   final AsyncModifier asyncModifier;
 
   Fun(this.params, this.body, {this.isGenerator: false,
-      this.asyncModifier: const AsyncModifier.sync()});
+      this.asyncModifier: const AsyncModifier.sync(),
+      // TODO(ochafik): Make these non-optional.
+      this.paramTypes,
+      this.returnType});
 
   accept(NodeVisitor visitor) => visitor.visitFun(this);
 
@@ -1058,11 +1099,16 @@ class Fun extends FunctionExpression {
 
 class ArrowFun extends FunctionExpression {
   final List<Parameter> params;
+  final List<JsType> paramTypes;
   final body; // Expression or Block
+  final JsType returnType;
 
   bool _closesOverThis; // lazy initialized
 
-  ArrowFun(this.params, this.body);
+  ArrowFun(this.params, this.body,
+      // TODO(ochafik): Make these non-optional.
+      {this.paramTypes,
+      this.returnType});
 
   accept(NodeVisitor visitor) => visitor.visitArrowFun(this);
 
