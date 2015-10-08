@@ -824,6 +824,11 @@ class InstantiatorGeneratorVisitor implements NodeVisitor<Instantiator> {
       return new Await(makeExpression(arguments));
     };
   }
+
+  Instantiator visitTypeRef(TypeRef node) =>
+    TODO('visitTypeRef');
+  Instantiator visitPlaceholderExpression(PlaceholderExpression node) =>
+    TODO('visitPlaceholderExpression');
 }
 
 /**
