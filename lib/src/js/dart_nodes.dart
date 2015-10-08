@@ -14,8 +14,8 @@ import '../closure/closure_type.dart';
 
 import '../js/js_ast.dart';
 import 'js_types.dart';
-import 'package:dev_compiler/src/js/dart_nodes.dart';
-// import 'package:dev_compiler/src/js/dart_nodes.dart';
+import 'package:analyzer/src/generated/element.dart';
+import 'package:dev_compiler/src/info.dart';
 
 class DartMethodCall extends Visitable {
   /// Can be this, an expression or null (for global functions).
@@ -41,23 +41,30 @@ class DartMethodCall extends Visitable {
 
 /// TODO(ochafik): Store [LibraryElement]?
 class DartLibrary {
-  final String name;
+  final LibraryUnit libraryUnit;
+  final List<DartLibraryPart> parts;
+  DartLibrary(this.libraryUnit, this.parts);
+}
+class DartLibraryPart {
+  /// Note: has uri.
+  final CompilationUnitElement compilationUnitElement;
   final List<DartDeclaration> declarations;
-  DartLibrary(this.name, this.declarations);
+  DartLibraryPart(this.compilationUnitElement, this.declarations);
 }
 
 abstract class DartDeclaration extends Visitable {
-  String get name;
+  Element get element;
+  // String get name => element.name;
   List<String> get genericTypeNames;
 }
 
 class DartTypedef extends DartDeclaration {
-  final String name;
+  final FunctionTypeAliasElement element;
   final TypeRef returnType;
   final List<TypeRef> paramTypes;
   List<String> get genericTypeNames => const<String>[];
 
-  DartTypedef(this.name, this.returnType, this.paramTypes);
+  DartTypedef(this.element, this.returnType, this.paramTypes);
 
   @override accept(NodeVisitor visitor) => null;
 
@@ -74,15 +81,14 @@ class DartTypedef extends DartDeclaration {
 ///
 /// TODO(ochafik): Store [ClassElement]?
 class DartClassDeclaration extends DartDeclaration {
-  // final String comment;
-  final String name;
+  final ClassElement element;
   final TypeRef parentRef;
   final List<TypeRef> mixinRefs;
   final List<TypeRef> implementedRefs;
   final List<String> genericTypeNames;
   final List<DartCallableDeclaration> members;
   DartClassDeclaration(
-      {this.name,
+      {this.element,
       this.parentRef,
       this.mixinRefs,
       this.implementedRefs,
@@ -130,7 +136,9 @@ class DartModifiers {
 /// and functions, constructors, methods, accessors.
 /// TODO(ochafik): Store [ExecutableElement]?
 class DartCallableDeclaration extends DartDeclaration {
-  final String name;
+  /// A [ClassMemberElement] or [VariableElement].
+  final Element element;
+  // final String name;
   final DartModifiers modifiers;
   final DartCallableStorage storage;
   final DartCallableKind kind;
@@ -142,7 +150,8 @@ class DartCallableDeclaration extends DartDeclaration {
   /// Left intentionally mutable for now. Some passes will update this.
   String comment;
 
-  DartCallableDeclaration._(this.name, this.modifiers, this.kind, this.storage, this.body) {
+  DartCallableDeclaration._(this.element, this.modifiers, this.kind, this.storage, this.body) {
+    assert(element is ClassMemberElement || element is VariableElement);
     // Check body type.
     assert((body is Fun) || (kind == DartCallableKind.value));
     // Check params.
@@ -176,32 +185,32 @@ PlaceholderExpression newDartUnknownMethodCall(Expression target, String methodN
     new PlaceholderExpression(
         new DartMethodCall(target, methodName, arguments, isUnknownMethod: false));
 
-DartCallableDeclaration newDartInstanceField(String name, DartModifiers modifiers) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.value, DartCallableStorage.instanceMember, null);
+DartCallableDeclaration newDartInstanceField(FieldElement element, DartModifiers modifiers) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.value, DartCallableStorage.instanceMember, null);
 
-DartCallableDeclaration newDartStaticField(String name, DartModifiers modifiers, Expression body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.value, DartCallableStorage.classMember, body);
+DartCallableDeclaration newDartStaticField(FieldElement element, DartModifiers modifiers, Expression body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.value, DartCallableStorage.classMember, body);
 
-DartCallableDeclaration newDartTopLevelValue(String name, DartModifiers modifiers, Expression body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.value, DartCallableStorage.topLevel, body);
+DartCallableDeclaration newDartTopLevelValue(TopLevelVariableElement element, DartModifiers modifiers, Expression body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.value, DartCallableStorage.topLevel, body);
 
-DartCallableDeclaration newDartTopLevelFunction(String name, DartModifiers modifiers, Fun body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.function, DartCallableStorage.topLevel, body);
+DartCallableDeclaration newDartTopLevelFunction(FunctionElement element, DartModifiers modifiers, Fun body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.function, DartCallableStorage.topLevel, body);
 
-DartCallableDeclaration newDartInstanceMethod(String name, DartModifiers modifiers, Fun body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.function, DartCallableStorage.instanceMember, body);
+DartCallableDeclaration newDartInstanceMethod(MethodElement element, DartModifiers modifiers, Fun body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.function, DartCallableStorage.instanceMember, body);
 
-DartCallableDeclaration newDartStaticMethod(String name, DartModifiers modifiers, Fun body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.function, DartCallableStorage.classMember, body);
+DartCallableDeclaration newDartStaticMethod(MethodElement element, DartModifiers modifiers, Fun body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.function, DartCallableStorage.classMember, body);
 
-DartCallableDeclaration newDartInstanceGetter(String name, DartModifiers modifiers, Fun body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.getter, DartCallableStorage.instanceMember, body);
+DartCallableDeclaration newDartInstanceGetter(PropertyAccessorElement element, DartModifiers modifiers, Fun body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.getter, DartCallableStorage.instanceMember, body);
 
-DartCallableDeclaration newDartStaticGetter(String name, DartModifiers modifiers, Fun body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.getter, DartCallableStorage.classMember, body);
+DartCallableDeclaration newDartStaticGetter(PropertyAccessorElement element, DartModifiers modifiers, Fun body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.getter, DartCallableStorage.classMember, body);
 
-DartCallableDeclaration newDartInstanceSetter(String name, DartModifiers modifiers, Fun body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.setter, DartCallableStorage.instanceMember, body);
+DartCallableDeclaration newDartInstanceSetter(PropertyAccessorElement element, DartModifiers modifiers, Fun body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.setter, DartCallableStorage.instanceMember, body);
 
-DartCallableDeclaration newDartStaticSetter(String name, DartModifiers modifiers, Fun body) =>
-    new DartCallableDeclaration._(name, modifiers, DartCallableKind.setter, DartCallableStorage.classMember, body);
+DartCallableDeclaration newDartStaticSetter(PropertyAccessorElement element, DartModifiers modifiers, Fun body) =>
+    new DartCallableDeclaration._(element, modifiers, DartCallableKind.setter, DartCallableStorage.classMember, body);
