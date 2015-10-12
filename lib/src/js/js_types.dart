@@ -8,6 +8,7 @@ import '../closure/closure_type.dart';
 
 import '../js/js_ast.dart' as JS;
 import 'dart_nodes.dart';
+import 'package:analyzer/src/generated/element.dart';
 
 /// JavaScript type reference.
 abstract class TypeRef extends JS.Visitable {
@@ -23,10 +24,15 @@ abstract class TypeRefVisitor<T> {
   T visitGenericTypeRef(GenericTypeRef typeRef);
 }
 
+class DartTypeRef extends TypeRef {
+  final DartType type;
+  DartTypeRef(this.type);
+}
+
 /// Used for interop (imported Closure libs) and for basic types.
 /// TODO(ochafik): Merge [ClosureType] in this hierarchy.
 class ClosureTypeRef extends TypeRef {
-  ClosureType type;
+  final ClosureType type;
   ClosureTypeRef(this.type);
   // TODO(ochafik): Visit sub-types here.
   @override void visitChildren(JS.NodeVisitor visitor) {}
