@@ -984,6 +984,7 @@ class Identifier extends Expression implements Parameter {
   final bool allowRename;
   final JsType type;
 
+  // TODO(ochafik): Make type non-optional.
   Identifier(this.name, {this.allowRename: true, this.type}) {
     assert(_identifierRE.hasMatch(name));
   }
@@ -1001,6 +1002,7 @@ class RestParameter extends Expression implements Parameter {
   final Identifier parameter;
   final JsType type;
 
+  // TODO(ochafik): Make type non-optional.
   RestParameter(this.parameter, [this.type]);
 
   RestParameter _clone() => new RestParameter(parameter);
@@ -1066,7 +1068,6 @@ abstract class JsType {}
 
 abstract class FunctionExpression extends Expression {
   List<Parameter> get params;
-  List<JsType> get paramTypes;
 
   get body; // Expression or block
   JsType get returnType; // Type of the body or of its return type.
@@ -1083,8 +1084,7 @@ class Fun extends FunctionExpression {
 
   Fun(this.params, this.body, {this.isGenerator: false,
       this.asyncModifier: const AsyncModifier.sync(),
-      // TODO(ochafik): Make these non-optional.
-      this.paramTypes,
+      // TODO(ochafik): Make this non-optional.
       this.returnType});
 
   accept(NodeVisitor visitor) => visitor.visitFun(this);
@@ -1102,16 +1102,14 @@ class Fun extends FunctionExpression {
 
 class ArrowFun extends FunctionExpression {
   final List<Parameter> params;
-  final List<JsType> paramTypes;
   final body; // Expression or Block
   final JsType returnType;
 
   bool _closesOverThis; // lazy initialized
 
   ArrowFun(this.params, this.body,
-      // TODO(ochafik): Make these non-optional.
-      {this.paramTypes,
-      this.returnType});
+      // TODO(ochafik): Make this non-optional.
+      {this.returnType});
 
   accept(NodeVisitor visitor) => visitor.visitArrowFun(this);
 
