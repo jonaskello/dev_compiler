@@ -975,13 +975,16 @@ class Postfix extends Expression {
   int get precedenceLevel => UNARY;
 }
 
-abstract class Parameter implements Expression {}
+abstract class Parameter implements Expression {
+  JsType get type;
+}
 
 class Identifier extends Expression implements Parameter {
   final String name;
   final bool allowRename;
+  final JsType type;
 
-  Identifier(this.name, {this.allowRename: true}) {
+  Identifier(this.name, {this.allowRename: true, this.type}) {
     assert(_identifierRE.hasMatch(name));
   }
   static RegExp _identifierRE = new RegExp(r'^[A-Za-z_$][A-Za-z_$0-9]*$');
@@ -996,8 +999,9 @@ class Identifier extends Expression implements Parameter {
 // This is an expression for convenience in the AST.
 class RestParameter extends Expression implements Parameter {
   final Identifier parameter;
+  final JsType type;
 
-  RestParameter(this.parameter);
+  RestParameter(this.parameter, [this.type]);
 
   RestParameter _clone() => new RestParameter(parameter);
   accept(NodeVisitor visitor) => visitor.visitRestParameter(this);
@@ -1070,7 +1074,6 @@ abstract class FunctionExpression extends Expression {
 
 class Fun extends FunctionExpression {
   final List<Parameter> params;
-  final List<JsType> paramTypes;
   final Block body;
   final JsType returnType;
   /** Whether this is a JS generator (`function*`) that may contain `yield`. */
