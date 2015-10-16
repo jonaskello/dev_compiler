@@ -195,7 +195,7 @@ class JSCodegenVisitor extends GeneralizingAstVisitor with ClosureAnnotator {
       list.add(js.string(compiler.getModuleName(library.source.uri), "'"));
     };
 
-    var imports = <JS.Expression>[js.string('dart_runtime/dart')];
+    var imports = <JS.Expression>[js.string('dart/_runtime')];
     _imports.forEach((library, temp) {
       if (_loader.libraryIsLoaded(library)) {
         processImport(library, temp, imports);

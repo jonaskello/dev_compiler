@@ -485,6 +485,13 @@ AnalysisErrorListener createErrorReporter(
 /// Curated order to minimize lazy classes needed by dart:core and its
 /// transitive SDK imports.
 const corelibOrder = const [
+  'dart._errors',
+  'dart._generators',
+  'dart._types',
+  'dart._rtti',
+  'dart._classes',
+  'dart._operations',
+  'dart._runtime',
   'dart.core',
   'dart.collection',
   'dart._internal',
@@ -517,13 +524,6 @@ final defaultRuntimeFiles = () {
     'harmony_feature_check.js',
     'dart_utils.js',
     'dart_library.js',
-    '_errors.js',
-    '_generators.js',
-    '_types.js',
-    '_rtti.js',
-    '_classes.js',
-    '_operations.js',
-    'dart_runtime.js',
   ];
   files.addAll(corelibOrder.map((l) => l.replaceAll('.', '/') + '.js'));
   return files;
