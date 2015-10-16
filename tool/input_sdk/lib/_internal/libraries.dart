@@ -216,6 +216,54 @@ const Map<String, LibraryInfo> LIBRARIES = const {
       category: "Internal",
       documented: false,
       platforms: DART2JS_PLATFORM),
+
+  "_rtti": const LibraryInfo(
+      "_internal/compiler/js_lib/rtti.dart",
+      category: "Internal",
+      documented: false,
+      platforms: DART2JS_PLATFORM),
+
+  "_types": const LibraryInfo(
+      "_internal/compiler/js_lib/types.dart",
+      category: "Internal",
+      documented: false,
+      platforms: DART2JS_PLATFORM),
+
+  "_classes": const LibraryInfo(
+      "_internal/compiler/js_lib/classes.dart",
+      category: "Internal",
+      documented: false,
+      platforms: DART2JS_PLATFORM),
+
+  "_errors": const LibraryInfo(
+      "_internal/compiler/js_lib/errors.dart",
+      category: "Internal",
+      documented: false,
+      platforms: DART2JS_PLATFORM),
+
+  "_generators": const LibraryInfo(
+      "_internal/compiler/js_lib/generators.dart",
+      category: "Internal",
+      documented: false,
+      platforms: DART2JS_PLATFORM),
+
+  "_operations": const LibraryInfo(
+      "_internal/compiler/js_lib/operations.dart",
+      category: "Internal",
+      documented: false,
+      platforms: DART2JS_PLATFORM),
+
+  "dart_utils": const LibraryInfo(
+      "_internal/compiler/js_lib/dart_utils.dart",
+      category: "Internal",
+      documented: false,
+      platforms: DART2JS_PLATFORM),
+
+  "dart_runtime": const LibraryInfo(
+      "_internal/compiler/js_lib/dart_runtime.dart",
+      category: "Internal",
+      documented: false,
+      platforms: DART2JS_PLATFORM),
 };
 
 /**
