@@ -136,7 +136,7 @@ class CompilerOptions {
   /// Host name or address for HTTP server when [serverMode] is on.
   final String host;
 
-  /// Location for runtime files, such as `dart_runtime.js`. By default this is
+  /// Location for runtime files, such as `dart_utils.js`. By default this is
   /// inferred to be under `lib/runtime/` in the location of the `dev_compiler`
   /// package (if we can infer where that is located).
   final String runtimeDir;
